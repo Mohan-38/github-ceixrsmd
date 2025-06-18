@@ -337,9 +337,9 @@ export const sendOrderConfirmation = async (
             </div>
             
             <div class="warning">
-              <h3>📧 Secure Document Delivery</h3>
-              <p><strong>You will receive a separate email within 5 minutes</strong> containing secure download links for all project documents.</p>
-              <p><strong>Important:</strong> Download links are time-limited (72 hours) and email-specific for your security.</p>
+              <h3>📧 Document Delivery</h3>
+              <p><strong>You will receive a separate email within 5 minutes</strong> containing download links for all project documents.</p>
+              <p><strong>Note:</strong> If no documents are currently available, you'll receive a "Documents Coming Soon" notification with delivery timeline.</p>
             </div>
             
             <h3>What's Included:</h3>
@@ -348,7 +348,6 @@ export const sendOrderConfirmation = async (
               <li>Comprehensive documentation across 3 review stages</li>
               <li>Installation and setup guides</li>
               <li>Technical specifications and implementation details</li>
-              <li>Secure, time-limited access to all downloads</li>
               <li>Email support for technical questions</li>
             </ul>
             
@@ -385,6 +384,126 @@ export const sendOrderConfirmation = async (
     console.error('Order confirmation failed:', error);
     // Don't throw error for order confirmation - order should still complete
     console.log('Order completed successfully, but email notification failed.');
+  }
+};
+
+// NEW: Send "Documents Coming Soon" notification when no documents are available
+export const sendNoDocumentsNotification = async (data: DocumentDeliveryData): Promise<void> => {
+  if (!validateEmail(data.customer_email)) {
+    throw new Error('Invalid recipient email address');
+  }
+
+  console.log('📋 Sending "Documents Coming Soon" notification...');
+  console.log('📧 Sending to:', data.customer_email);
+
+  const { date } = getCurrentDateTime();
+
+  try {
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>📋 Project Documents Coming Soon - TechCreator</title>
+        <style>
+          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
+          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
+          .footer { background: #f9fafb; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none; }
+          .summary { background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #f59e0b; }
+          .highlight { color: #d97706; font-weight: bold; }
+          .timeline { background: #ecfdf5; border: 1px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <h1>📋 Project Documents Coming Soon</h1>
+            <p>Your order is confirmed and being prepared!</p>
+          </div>
+          
+          <div class="content">
+            <h2>Hello ${data.customer_name},</h2>
+            
+            <p>Thank you for purchasing <strong>${data.project_title}</strong>! Your order has been successfully processed.</p>
+            
+            <div class="summary">
+              <h3>📊 Order Summary</h3>
+              <p><strong>Order ID:</strong> <span class="highlight">${data.order_id}</span></p>
+              <p><strong>Project:</strong> ${data.project_title}</p>
+              <p><strong>Order Date:</strong> ${date}</p>
+              <p><strong>Status:</strong> <span class="highlight">Processing</span></p>
+            </div>
+            
+            <div class="timeline">
+              <h3>⏰ Document Delivery Timeline</h3>
+              <p><strong>Your project documents will be delivered within 3 business days.</strong></p>
+              
+              <div style="margin: 20px 0;">
+                <h4>What you'll receive:</h4>
+                <ul>
+                  <li>📁 Complete source code and project files</li>
+                  <li>📚 Comprehensive documentation (3 review stages)</li>
+                  <li>🔧 Installation and setup guides</li>
+                  <li>📋 Technical specifications</li>
+                  <li>💡 Implementation guidelines</li>
+                  <li>🎯 Project review presentations</li>
+                </ul>
+              </div>
+              
+              <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">
+                <p style="margin: 0;"><strong>📧 Delivery Method:</strong> All documents will be sent to this email address with direct download links organized by review stages.</p>
+              </div>
+            </div>
+            
+            <div style="background: #dbeafe; border: 1px solid #3b82f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
+              <h3 style="color: #1e40af; margin-top: 0;">🔔 What happens next?</h3>
+              <ol style="margin: 0;">
+                <li><strong>Document Preparation:</strong> Our team is organizing your project files</li>
+                <li><strong>Quality Check:</strong> Ensuring all documents are complete and accessible</li>
+                <li><strong>Email Delivery:</strong> You'll receive download links within 3 days</li>
+                <li><strong>Lifetime Access:</strong> Save the email for future downloads</li>
+              </ol>
+            </div>
+            
+            <h3>💬 Need Immediate Assistance?</h3>
+            <p>If you have any questions or need urgent support, please contact us:</p>
+            <p><strong>Email:</strong> <a href="mailto:${CONFIG.developerEmail}">${CONFIG.developerEmail}</a></p>
+            <p><strong>Response Time:</strong> Within 24 hours</p>
+            
+            <p>Thank you for choosing TechCreator. We're preparing your project documents with care!</p>
+          </div>
+          
+          <div class="footer">
+            <p>&copy; 2025 TechCreator. All rights reserved.</p>
+            <p>This is an automated notification. Your documents are being prepared.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+
+    const emailData: BrevoEmailData = {
+      sender: {
+        name: CONFIG.brevo.senderName,
+        email: CONFIG.brevo.senderEmail
+      },
+      to: [{
+        email: data.customer_email,
+        name: data.customer_name
+      }],
+      subject: `📋 Documents Coming Soon - ${data.project_title} (${data.order_id})`,
+      htmlContent,
+      tags: ['document-preparation', 'order-processing', 'coming-soon']
+    };
+
+    await sendBrevoEmail(emailData);
+    console.log('✅ "Documents coming soon" email sent successfully via Brevo');
+  } catch (error) {
+    console.error('❌ Failed to send "documents coming soon" email:', error);
+    throw error;
   }
 };
 
@@ -661,119 +780,6 @@ export const sendDocumentDelivery = async (data: DocumentDeliveryData): Promise<
   }
 };
 
-// Send notification when no documents are available
-const sendNoDocumentsNotification = async (data: DocumentDeliveryData): Promise<void> => {
-  const { date } = getCurrentDateTime();
-
-  try {
-    const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Project Documents Coming Soon - TechCreator</title>
-        <style>
-          body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; margin: 0; padding: 0; }
-          .container { max-width: 600px; margin: 0 auto; padding: 20px; }
-          .header { background: linear-gradient(135deg, #f59e0b, #d97706); color: white; padding: 30px; text-align: center; border-radius: 8px 8px 0 0; }
-          .content { background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; }
-          .footer { background: #f9fafb; padding: 20px; text-align: center; border-radius: 0 0 8px 8px; border: 1px solid #e5e7eb; border-top: none; }
-          .summary { background: #fef3c7; padding: 20px; border-radius: 8px; margin: 20px 0; border: 1px solid #f59e0b; }
-          .highlight { color: #d97706; font-weight: bold; }
-          .timeline { background: #ecfdf5; border: 1px solid #10b981; padding: 20px; border-radius: 8px; margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <h1>📋 Project Documents Coming Soon</h1>
-            <p>Your order is confirmed and being prepared!</p>
-          </div>
-          
-          <div class="content">
-            <h2>Hello ${data.customer_name},</h2>
-            
-            <p>Thank you for purchasing <strong>${data.project_title}</strong>! Your order has been successfully processed.</p>
-            
-            <div class="summary">
-              <h3>📊 Order Summary</h3>
-              <p><strong>Order ID:</strong> <span class="highlight">${data.order_id}</span></p>
-              <p><strong>Project:</strong> ${data.project_title}</p>
-              <p><strong>Order Date:</strong> ${date}</p>
-              <p><strong>Status:</strong> <span class="highlight">Processing</span></p>
-            </div>
-            
-            <div class="timeline">
-              <h3>⏰ Document Delivery Timeline</h3>
-              <p><strong>Your project documents will be delivered within 3 business days.</strong></p>
-              
-              <div style="margin: 20px 0;">
-                <h4>What you'll receive:</h4>
-                <ul>
-                  <li>📁 Complete source code and project files</li>
-                  <li>📚 Comprehensive documentation (3 review stages)</li>
-                  <li>🔧 Installation and setup guides</li>
-                  <li>📋 Technical specifications</li>
-                  <li>💡 Implementation guidelines</li>
-                  <li>🎯 Project review presentations</li>
-                </ul>
-              </div>
-              
-              <div style="background: white; padding: 15px; border-radius: 6px; border-left: 4px solid #10b981;">
-                <p style="margin: 0;"><strong>📧 Delivery Method:</strong> All documents will be sent to this email address with secure, time-limited download links.</p>
-              </div>
-            </div>
-            
-            <div style="background: #dbeafe; border: 1px solid #3b82f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="color: #1e40af; margin-top: 0;">🔔 What happens next?</h3>
-              <ol style="margin: 0;">
-                <li><strong>Document Preparation:</strong> Our team is organizing your project files</li>
-                <li><strong>Quality Check:</strong> Ensuring all documents are complete and accessible</li>
-                <li><strong>Secure Delivery:</strong> You'll receive time-limited download links within 3 days</li>
-                <li><strong>Secure Access:</strong> Links will be personalized for your email address</li>
-              </ol>
-            </div>
-            
-            <h3>💬 Need Immediate Assistance?</h3>
-            <p>If you have any questions or need urgent support, please contact us:</p>
-            <p><strong>Email:</strong> <a href="mailto:${CONFIG.developerEmail}">${CONFIG.developerEmail}</a></p>
-            <p><strong>Response Time:</strong> Within 24 hours</p>
-            
-            <p>Thank you for choosing TechCreator. We're preparing your secure project documents with care!</p>
-          </div>
-          
-          <div class="footer">
-            <p>&copy; 2025 TechCreator. All rights reserved.</p>
-            <p>This is an automated notification. Your documents are being prepared.</p>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-
-    const emailData: BrevoEmailData = {
-      sender: {
-        name: CONFIG.brevo.senderName,
-        email: CONFIG.brevo.senderEmail
-      },
-      to: [{
-        email: data.customer_email,
-        name: data.customer_name
-      }],
-      subject: `📋 Secure Documents Coming Soon - ${data.project_title} (${data.order_id})`,
-      htmlContent,
-      tags: ['document-preparation', 'order-processing', 'coming-soon']
-    };
-
-    await sendBrevoEmail(emailData);
-    console.log('✅ "Documents coming soon" email sent successfully via Brevo');
-  } catch (error) {
-    console.error('❌ Failed to send "documents coming soon" email:', error);
-    throw error;
-  }
-};
-
 // Brevo document delivery (when documents are available) - LEGACY
 const sendBrevoDocumentDelivery = async (data: DocumentDeliveryData): Promise<void> => {
   const { date } = getCurrentDateTime();
@@ -971,21 +977,17 @@ Thank you for purchasing "${projectTitle}"!
 Your Order ID: ${orderId}
 
 What happens next:
-1. You will receive a separate email within 5 minutes containing SECURE download links for all project documents
-2. Documents are organized by review stages (Review 1, 2, and 3)
-3. Each document includes presentations, documentation, and reports as applicable
-4. Download links are TIME-LIMITED (72 hours) and EMAIL-SPECIFIC for your security
-5. You'll have secure access to download these documents
+1. You will receive a separate email within 5 minutes containing download links for all project documents
+2. If no documents are currently available, you'll receive a "Documents Coming Soon" notification
+3. Documents are organized by review stages (Review 1, 2, and 3)
+4. Each document includes presentations, documentation, and reports as applicable
 
-The secure document delivery email will include:
-• Time-limited download links (72 hours)
-• Email-verified access (only works for your email)
-• Documents grouped by review stage
+The document delivery email will include:
+• Direct download links or "Coming Soon" notification
+• Documents grouped by review stage (when available)
 • File size information
 • Technical specifications
 • Implementation guides
-
-IMPORTANT: Download links expire after 72 hours for security. If you need new links after expiration, contact us with your order ID.
 
 If you have any questions or need support, please contact us at ${CONFIG.developerEmail}
 

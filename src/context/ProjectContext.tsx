@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Project, Inquiry, Order, ProjectDocument } from '../types';
-import { sendDocumentDelivery, sendSecureDocumentDelivery, generateDownloadInstructions } from '../utils/email';
+import { sendDocumentDelivery, sendSecureDocumentDelivery, generateDownloadInstructions, sendNoDocumentsNotification } from '../utils/email';
 import { generateSecureDownloadTokens } from '../utils/secureDownloads';
 
 type ProjectContextType = {
@@ -357,12 +357,36 @@ export const ProjectProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     setOrders(prevOrders => [...prevOrders, convertedOrder]);
 
-    // Automatically send secure document delivery email after successful order
-    try {
-      await sendSecureProjectDocumentsForOrder(convertedOrder, order.customerEmail, order.customerName, true);
-    } catch (emailError) {
-      console.error('Error sending secure document delivery email:', emailError);
-      // Don't throw here as the order was successful, just log the email error
+    // Check if documents are available for this project
+    const documents = getProjectDocuments(convertedOrder.projectId);
+    
+    if (documents.length === 0) {
+      // No documents available - send "Documents Coming Soon" email
+      console.log('📭 No documents available for project, sending "Documents Coming Soon" email...');
+      try {
+        await sendNoDocumentsNotification({
+          project_title: convertedOrder.projectTitle,
+          customer_name: convertedOrder.customerName,
+          customer_email: convertedOrder.customerEmail,
+          order_id: convertedOrder.id,
+          documents: [], // Empty array since no documents
+          access_expires: 'Documents will be delivered within 3 business days'
+        });
+        console.log('✅ "Documents Coming Soon" email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Error sending "Documents Coming Soon" email:', emailError);
+        // Don't throw here as the order was successful, just log the email error
+      }
+    } else {
+      // Documents are available - send secure document delivery email
+      console.log('📄 Documents available for project, sending secure document delivery email...');
+      try {
+        await sendSecureProjectDocumentsForOrder(convertedOrder, order.customerEmail, order.customerName, true);
+        console.log('✅ Secure document delivery email sent successfully');
+      } catch (emailError) {
+        console.error('❌ Error sending secure document delivery email:', emailError);
+        // Don't throw here as the order was successful, just log the email error
+      }
     }
 
     return convertedOrder;
